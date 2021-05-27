@@ -20,12 +20,6 @@ public class Car : MonoBehaviour
         body = GetComponent<Rigidbody2D>();
     }
 
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
-            ApplySpeedBoost();
-    }
-
     void FixedUpdate()
     {
         ApplyDriveForce();
