@@ -12,6 +12,8 @@ public class CarDriving : MonoBehaviour
     [SerializeField] float maxSpeedWithBoost;
     [SerializeField] float boostForce = 25f;
     [SerializeField] GameObject raceManager;
+    [SerializeField ]ParticleSystem driftParticles;
+
 
     float accelerationInput = 0;
     float steeringInput = 0;
@@ -23,6 +25,9 @@ public class CarDriving : MonoBehaviour
     float velocityVsUp;
 
     bool canDrive = true;
+    bool offroad = false;
+    bool isDrifting = false;
+    bool driftActivated = false;
 
     Rigidbody2D body;
     LapCounter lapCounter;
@@ -30,7 +35,10 @@ public class CarDriving : MonoBehaviour
     private void Awake()
     {
         body = GetComponent<Rigidbody2D>();
+
         lapCounter = raceManager.GetComponent<LapCounter>();
+
+        driftParticles.gameObject.SetActive(false);
     }
     // Update is called once per frame
     void Update()
@@ -39,12 +47,20 @@ public class CarDriving : MonoBehaviour
 
         accelerationInput = Input.GetAxis("Vertical");
 
+        //If the race is over don't allow the car to drive anymore
         if (lapCounter.GetIsCompleted())
             canDrive = false;
+
+        //Check for drift input
+        if (Input.GetKeyDown(KeyCode.Space))
+            isDrifting = true;
+        if (Input.GetKeyUp(KeyCode.Space))
+            isDrifting = false;
     }
 
     private void FixedUpdate()
     {
+        //if the race is not completed yet the player can drive
         if (canDrive)
         {
             ApplySteering();
@@ -52,9 +68,48 @@ public class CarDriving : MonoBehaviour
             ApplyEngineForce();
 
             KillOrthogonalVelocity();
+
+            if (offroad)
+                AdjustSpeedForOffroad();
+            else
+                maxSpeed = 35;
+
+            //If the car is moving faster than the current maximum speed, the car will slow down until it reaches its maximum speed again
+            if (velocityVsUp > maxSpeed)
+                SlowDownToMaxSpeed();
+
+            //Activates and Deactivates drifting
+            if (isDrifting && !driftActivated)
+                ActivateDrift();
+            else if (!isDrifting & driftActivated)
+                DeactivateDrift();
         }
         else
             body.velocity = new Vector2(0, 0);
+    }
+
+    void ActivateDrift()
+    {
+        //Changes the turning values to allow for a drifting effect
+        driftPower = 0.9f;
+        steeringPower = 2.5f;
+        driftActivated = true;
+        driftParticles.gameObject.SetActive(true);
+    }
+
+    void DeactivateDrift()
+    {
+        //Changes the turning values back to normal when the player is no longer drifting
+        driftPower = 0.5f;
+        steeringPower = 1.5f;
+        driftActivated = false;
+        driftParticles.gameObject.SetActive(false);
+    }
+
+    void AdjustSpeedForOffroad()
+    {
+        //Changed the maximum driving speed when the car is off of the track
+        maxSpeed = 20;
     }
 
     private void ApplySteering()
@@ -75,8 +130,10 @@ public class CarDriving : MonoBehaviour
         //Stops the car from still turning in the same direction when changing from forward input to backward input
         if (accelerationInput <= 0 && velocityVsUp > 0 || accelerationInput >= 0 && velocityVsUp < 0)
             steeringPower = Mathf.Lerp(steeringPower, 0.0f, Time.fixedDeltaTime * 2);
+        else if (driftActivated)
+            steeringPower = 2.5f;
         else
-            steeringPower = 2f; 
+            steeringPower = 1.5f;
 
         //Turns Car, Direction changes if they are moving backward
         if (velocityVsUp <= 0)
@@ -112,6 +169,14 @@ public class CarDriving : MonoBehaviour
         body.AddForce(engineForce, ForceMode2D.Force);
     }
 
+    void SlowDownToMaxSpeed()
+    {
+        //Adds a backwards force that is twice as strong as the forward driving force to slow the car down if it is over maximum speed
+        Vector2 slowDownForce = -transform.up * (accelerationPower * 2.0f);
+
+        body.AddForce(slowDownForce, ForceMode2D.Force);
+    }
+
     void KillOrthogonalVelocity()
     {
         //Limits Sideways movement when turning (Less Space Like)
@@ -130,13 +195,31 @@ public class CarDriving : MonoBehaviour
         body.AddForce(transform.up * boostForce, ForceMode2D.Impulse);
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    void OnTriggerEnter2D(Collider2D collision)
     {
         //If the car drives over a boost pad, apply boost
         if (collision.tag == "BoostPad")
             ApplySpeedBoost();
 
+        //Allows the lap to increase when the car passes the finish line
         if (collision.tag == "FinishLine")
             lapCounter.IncrementLap();
+
+        //Checks if the car is on the track
+        if (collision.tag == "Track")
+            offroad = false;
+    }
+
+    void OnTriggerExit2D(Collider2D collision)
+    {
+        //Checks if the car is off of the track
+        if (collision.tag == "Track")
+            offroad = true;
+    }
+
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        //Creates a small bounce off of the wall when hit
+        body.AddForce(collision.contacts[0].normal * (velocityVsUp / 2), ForceMode2D.Impulse);
     }
 }

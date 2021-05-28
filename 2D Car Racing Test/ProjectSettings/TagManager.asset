@@ -6,6 +6,7 @@ TagManager:
   tags:
   - BoostPad
   - FinishLine
+  - Track
   layers:
   - Default
   - TransparentFX
