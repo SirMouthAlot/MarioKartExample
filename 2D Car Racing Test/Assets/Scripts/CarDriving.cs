@@ -11,6 +11,7 @@ public class CarDriving : MonoBehaviour
     [SerializeField] float maxSpeed;
     [SerializeField] float maxSpeedWithBoost;
     [SerializeField] float boostForce = 25f;
+    [SerializeField] GameObject raceManager;
 
     float accelerationInput = 0;
     float steeringInput = 0;
@@ -21,12 +22,15 @@ public class CarDriving : MonoBehaviour
 
     float velocityVsUp;
 
+    bool canDrive = true;
+
     Rigidbody2D body;
+    LapCounter lapCounter;
 
     private void Awake()
     {
         body = GetComponent<Rigidbody2D>();
-
+        lapCounter = raceManager.GetComponent<LapCounter>();
     }
     // Update is called once per frame
     void Update()
@@ -34,15 +38,23 @@ public class CarDriving : MonoBehaviour
         horizontalInput = Input.GetAxis("Horizontal");
 
         accelerationInput = Input.GetAxis("Vertical");
+
+        if (lapCounter.GetIsCompleted())
+            canDrive = false;
     }
 
     private void FixedUpdate()
     {
-        ApplySteering();
+        if (canDrive)
+        {
+            ApplySteering();
 
-        ApplyEngineForce();
+            ApplyEngineForce();
 
-        KillOrthogonalVelocity();
+            KillOrthogonalVelocity();
+        }
+        else
+            body.velocity = new Vector2(0, 0);
     }
 
     private void ApplySteering()
@@ -123,5 +135,8 @@ public class CarDriving : MonoBehaviour
         //If the car drives over a boost pad, apply boost
         if (collision.tag == "BoostPad")
             ApplySpeedBoost();
+
+        if (collision.tag == "FinishLine")
+            lapCounter.IncrementLap();
     }
 }
