@@ -9829,7 +9829,9 @@ MonoBehaviour:
   accelerationPower: 25
   steeringPower: 1.5
   driftPower: 0.5
-  maxSpeed: 50
+  maxSpeedOnRoad: 35
+  maxSpeedOffRoad: 20
+  maxSpeedWhileDrifting: 30
   maxSpeedWithBoost: 60
   boostForce: 30
   raceManager: {fileID: 1432187297}

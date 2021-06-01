@@ -8,7 +8,9 @@ public class CarDriving : MonoBehaviour
     [SerializeField] float accelerationPower;
     [SerializeField] float steeringPower;
     [SerializeField] float driftPower;
-    [SerializeField] float maxSpeed;
+    [SerializeField] float maxSpeedOnRoad;
+    [SerializeField] float maxSpeedOffRoad;
+    [SerializeField] float maxSpeedWhileDrifting;
     [SerializeField] float maxSpeedWithBoost;
     [SerializeField] float boostForce = 25f;
     [SerializeField] GameObject raceManager;
@@ -16,14 +18,14 @@ public class CarDriving : MonoBehaviour
 
     [SerializeField] Transform finishLinePos;
 
+    float maxSpeed;
     float accelerationInput = 0;
     float steeringInput = 0;
-    
     float horizontalInput = 0;
-
     float rotationAngle = 0;
-
     float velocityVsUp;
+
+    float driftBoostTimer = 0;
 
     bool canDrive = true;
     bool offroad = false;
@@ -56,11 +58,27 @@ public class CarDriving : MonoBehaviour
         if (lapCounter.GetIsCompleted())
             canDrive = false;
 
+        //Checks if car is offroad and adjusts speed
+        if (offroad)
+            AdjustSpeedForOffroad();
+        else
+            maxSpeed = maxSpeedOnRoad;
+
         //Check for drift input
         if (Input.GetKeyDown(KeyCode.Space))
+        {
             isDrifting = true;
+            maxSpeed = maxSpeedWhileDrifting;
+        }
         if (Input.GetKeyUp(KeyCode.Space))
+        {
             isDrifting = false;
+            if (offroad)
+                maxSpeed = maxSpeedOffRoad;
+            else
+                maxSpeed = maxSpeedOnRoad;
+        }
+
     }
 
     private void FixedUpdate()
@@ -74,20 +92,33 @@ public class CarDriving : MonoBehaviour
 
             KillOrthogonalVelocity();
 
-            if (offroad)
-                AdjustSpeedForOffroad();
-            else
-                maxSpeed = 35;
-
             //If the car is moving faster than the current maximum speed, the car will slow down until it reaches its maximum speed again
             if (velocityVsUp > maxSpeed)
                 SlowDownToMaxSpeed();
 
             //Activates and Deactivates drifting
-            if (isDrifting && !driftActivated)
+            if (isDrifting && !driftActivated && steeringInput != 0)
                 ActivateDrift();
-            else if (!isDrifting & driftActivated)
+            else if ((!isDrifting && driftActivated) || steeringInput == 0)
                 DeactivateDrift();
+
+            if (driftActivated)
+            {
+                if (driftBoostTimer > 5f)
+                    driftParticles.startColor = Color.yellow;
+                else
+                    driftParticles.startColor = Color.grey;
+
+                driftBoostTimer += 0.1f;
+            }
+            else
+            {
+                if (driftBoostTimer > 5f)
+                    ApplySpeedBoost();
+
+                driftBoostTimer = 0;
+            }
+            
         }
         else
             body.velocity = new Vector2(0, 0);
@@ -114,7 +145,7 @@ public class CarDriving : MonoBehaviour
     void AdjustSpeedForOffroad()
     {
         //Changed the maximum driving speed when the car is off of the track
-        maxSpeed = 20;
+        maxSpeed = maxSpeedOffRoad;
     }
 
     private void ApplySteering()

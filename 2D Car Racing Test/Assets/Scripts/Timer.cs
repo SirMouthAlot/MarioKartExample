@@ -20,8 +20,6 @@ public class Timer : MonoBehaviour
         lapCounter = GetComponent<LapCounter>();
 
         bestTime = PlayerPrefs.GetFloat("FastestTime", 0);
-
-        Debug.Log(bestTime);
     }
 
     // Update is called once per frame
