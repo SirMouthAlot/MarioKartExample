@@ -14,6 +14,7 @@ public class CarDriving : MonoBehaviour
     [SerializeField] GameObject raceManager;
     [SerializeField ]ParticleSystem driftParticles;
 
+    [SerializeField] Transform finishLinePos;
 
     float accelerationInput = 0;
     float steeringInput = 0;
@@ -28,9 +29,11 @@ public class CarDriving : MonoBehaviour
     bool offroad = false;
     bool isDrifting = false;
     bool driftActivated = false;
+    bool checkpointReached = true;
 
     Rigidbody2D body;
     LapCounter lapCounter;
+    Vector2 triggerPosition;
 
     private void Awake()
     {
@@ -39,6 +42,8 @@ public class CarDriving : MonoBehaviour
         lapCounter = raceManager.GetComponent<LapCounter>();
 
         driftParticles.gameObject.SetActive(false);
+
+        triggerPosition = finishLinePos.position;
     }
     // Update is called once per frame
     void Update()
@@ -197,17 +202,29 @@ public class CarDriving : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D collision)
     {
+        Vector2 playerPos = transform.position;
+
+        Vector2 triggerDirection = (triggerPosition - playerPos).normalized;
+
         //If the car drives over a boost pad, apply boost
         if (collision.tag == "BoostPad")
             ApplySpeedBoost();
 
         //Allows the lap to increase when the car passes the finish line
-        if (collision.tag == "FinishLine")
+        if (collision.tag == "FinishLine" && triggerDirection.y > 0 && checkpointReached)
+        {
             lapCounter.IncrementLap();
-
+            checkpointReached = false;
+        }
+        
         //Checks if the car is on the track
         if (collision.tag == "Track")
             offroad = false;
+
+        //Checks if the car has passed the checkpoint to allow for a lap increase
+        if (collision.tag == "Checkpoint")
+            checkpointReached = true;
+
     }
 
     void OnTriggerExit2D(Collider2D collision)
